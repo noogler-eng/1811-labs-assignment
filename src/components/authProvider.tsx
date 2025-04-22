@@ -51,7 +51,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: 'https://rxcbmpdkivhvxsvxrsuk.supabase.co/auth/v1/callback',
+          redirectTo: 'https://notes.sharad.engineer/auth/callback',
         },
       }),
     signOut: () => supabase.auth.signOut(),
