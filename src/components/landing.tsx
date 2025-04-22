@@ -3,13 +3,8 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { useUser } from "@/lib/useUser";
-import { useRouter } from "next/navigation";
 
 export default function Home() {
-  const user = useUser();
-  const router = useRouter();
-
   return (
     <main className="min-h-screen bg-black text-white">
       {/* Hero */}
@@ -39,21 +34,9 @@ export default function Home() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.5 }}
         >
-          {!user ? (
-            <Button
-              className="bg-white text-black font-semibold hover:bg-gray-200 transition-all"
-              onClick={() => router.push("/login")}
-            >
-              Start Summarizing →
-            </Button>
-          ) : (
-            <Button
-              className="bg-white text-black font-semibold hover:bg-gray-200 transition-all"
-              onClick={() => router.push("/dashboard")}
-            >
-              Start Summarizing →
-            </Button>
-          )}
+          <Button className="bg-white text-black font-semibold hover:bg-gray-200 transition-all">
+            Start Summarizing →
+          </Button>
         </motion.div>
       </section>
 
@@ -109,21 +92,9 @@ export default function Home() {
         >
           Say goodbye to clutter. Focus on ideas. AI does the rest.
         </motion.p>
-        {!user ? (
-          <Button
-            className="bg-white text-black font-semibold px-8 py-6 text-lg hover:bg-gray-200 transition-all"
-            onClick={() => router.push("/login")}
-          >
-            Get Started Free
-          </Button>
-        ) : (
-          <Button
-            className="bg-white text-black font-semibold px-8 py-6 text-lg hover:bg-gray-200 transition-all"
-            onClick={() => router.push("/dashboard")}
-          >
-            Dashboard
-          </Button>
-        )}
+        <Button className="bg-white text-black font-semibold px-8 py-6 text-lg hover:bg-gray-200 transition-all">
+          Get Started Free
+        </Button>
       </section>
     </main>
   );
