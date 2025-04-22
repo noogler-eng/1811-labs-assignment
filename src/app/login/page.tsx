@@ -45,8 +45,6 @@ export default function LoginPage() {
 
       if (error) {
         setError(error.message);
-      } else {
-        router.push("/dashboard");
       }
     } catch (err: any) {
       setError(err.message || "An error occurred with Google login");
