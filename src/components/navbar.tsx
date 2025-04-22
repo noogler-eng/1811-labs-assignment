@@ -10,14 +10,16 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Menu, X, User, LogOut, Settings } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { Menu, X, User, LogOut } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "./authProvider";
+import Image from "next/image";
 
 export function Navbar() {
   const router = useRouter();
   const { signOut, user } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const pathname = usePathname();
 
   const handleLogout = async () => {
     await signOut();
@@ -35,20 +37,39 @@ export function Navbar() {
         <nav className="hidden md:flex items-center gap-6">
           {user ? (
             <>
-              <Link
-                href="/dashboard"
-                className="text-sm text-zinc-400 hover:text-white transition-colors"
-              >
-                Dashboard
-              </Link>
+              {pathname.includes("/dashboard") ? (
+                <Link
+                  href="/"
+                  className="text-sm text-zinc-400 hover:text-white transition-colors"
+                >
+                  Home
+                </Link>
+              ) : (
+                <Link
+                  href="/dashboard"
+                  className="text-sm text-zinc-400 hover:text-white transition-colors"
+                >
+                  Dashboard
+                </Link>
+              )}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="rounded-full h-8 w-8 bg-zinc-900"
+                    className="rounded-full h-8 w-8 bg-white"
                   >
-                    <User className="h-4 w-4" />
+                    {user?.user_metadata?.avatar_url ? (
+                      <Image
+                        src={user?.user_metadata?.avatar_url || ""}
+                        width={100}
+                        height={100}
+                        alt="Picture of the user"
+                        className="rounded-full"
+                      />
+                    ) : (
+                      <User className="h-4 w-4" />
+                    )}
                     <span className="sr-only">User menu</span>
                   </Button>
                 </DropdownMenuTrigger>
@@ -63,13 +84,6 @@ export function Navbar() {
                     <p className="text-xs text-zinc-500">Logged in</p>
                   </div>
                   <DropdownMenuSeparator className="bg-zinc-800" />
-                  <DropdownMenuItem
-                    className="hover:bg-zinc-800 hover:text-white cursor-pointer"
-                    onClick={() => router.push("/settings")}
-                  >
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
-                  </DropdownMenuItem>
                   <DropdownMenuItem
                     className="hover:bg-zinc-800 hover:text-white cursor-pointer text-red-400 hover:text-red-300"
                     onClick={handleLogout}
