@@ -246,11 +246,7 @@ export default function Dashboard() {
                       <h4 className="font-medium text-zinc-400 mb-1">
                         Summary
                       </h4>
-                      <div className="text-zinc-300">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                          {summaries[note.id]}
-                        </ReactMarkdown>
-                      </div>
+                      <div className="text-zinc-300">{summaries[note.id]}</div>
                     </div>
                   )}
                 </CardContent>

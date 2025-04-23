@@ -16,7 +16,7 @@ export async function POST(req: any) {
         role: "model",
         parts: [
           {
-            text: "you are notes summarize ai which gives only summary of the content, give me response in proper format so that we can display on screen like you can give it in markdown",
+            text: "You are an AI that summarizes notes. Provide only the summary of the following content in **well-structured format**, suitable for displaying directly on a screen. Do not include any extra commentary, disclaimers, or asterisks.",
           },
         ],
       },
