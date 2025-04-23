@@ -15,6 +15,10 @@ import {
   Copy,
   Check,
   Eye,
+  Trash2,
+  Pencil,
+  X,
+  Save,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -25,6 +29,16 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const PAGE_SIZE = 5;
 
@@ -38,6 +52,14 @@ export default function Dashboard() {
   const [copiedNoteId, setCopiedNoteId] = useState<string | null>(null);
   const router = useRouter();
   const { user, loading } = useAuth();
+
+  // State for editing functionality
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editedContent, setEditedContent] = useState("");
+
+  // State for delete confirmation dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
 
   console.log(user);
 
@@ -92,6 +114,44 @@ export default function Dashboard() {
     },
   });
 
+  // Update note mutation
+  const updateNote = useMutation({
+    mutationFn: async ({ id, content }: { id: string; content: string }) => {
+      await supabase
+        .from("notes")
+        .update({ content, updated_at: new Date().toISOString() })
+        .eq("id", id);
+    },
+    onSuccess: () => {
+      setEditingNoteId(null);
+      toast.success("Note updated successfully");
+      client.invalidateQueries({ queryKey: ["notes", user?.id, page] });
+    },
+    onError: () => {
+      toast.error("Failed to update note");
+    },
+  });
+
+  // Delete note mutation
+  const deleteNote = useMutation({
+    mutationFn: async (id: string) => {
+      await supabase.from("notes").delete().eq("id", id);
+    },
+    onSuccess: () => {
+      toast.success("Note deleted successfully");
+      client.invalidateQueries({ queryKey: ["notes-count"] });
+      client.invalidateQueries({ queryKey: ["notes", user?.id, page] });
+
+      // If we deleted the last note on the page, go to previous page
+      if (notes?.length === 1 && page > 1) {
+        setPage(page - 1);
+      }
+    },
+    onError: () => {
+      toast.error("Failed to delete note");
+    },
+  });
+
   const summarize = async (noteId: string, content: string) => {
     try {
       setSummarizing((prev) => ({ ...prev, [noteId]: true }));
@@ -112,6 +172,33 @@ export default function Dashboard() {
     setCopiedNoteId(noteId);
     toast.success("Note copied to clipboard");
     setTimeout(() => setCopiedNoteId(null), 2000);
+  };
+
+  // Helper function to start editing a note
+  const startEditing = (note: any) => {
+    setEditingNoteId(note.id);
+    setEditedContent(note.content);
+  };
+
+  // Helper function to cancel editing
+  const cancelEditing = () => {
+    setEditingNoteId(null);
+    setEditedContent("");
+  };
+
+  // Helper function to handle delete confirmation
+  const confirmDelete = (noteId: string) => {
+    setNoteToDelete(noteId);
+    setDeleteDialogOpen(true);
+  };
+
+  // Execute delete after confirmation
+  const executeDelete = () => {
+    if (noteToDelete) {
+      deleteNote.mutate(noteToDelete);
+    }
+    setDeleteDialogOpen(false);
+    setNoteToDelete(null);
   };
 
   useEffect(() => {
@@ -215,33 +302,103 @@ export default function Dashboard() {
                 className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors"
               >
                 <CardContent className="p-2">
-                  <div className="flex justify-between items-start">
-                    <Badge
-                      variant="outline"
-                      className="bg-zinc-950 text-zinc-400 border-zinc-800 text-xs"
-                    >
-                      {formatDate(note.created_at)}
-                    </Badge>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => copyToClipboard(note.content, note.id)}
-                      className="text-zinc-400 hover:text-white hover:bg-zinc-800 p-1 h-6 w-6"
-                    >
-                      {copiedNoteId === note.id ? (
-                        <Check className="h-3 w-3" />
-                      ) : (
-                        <Copy className="h-3 w-3" />
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant="outline"
+                        className="bg-zinc-950 text-zinc-400 border-zinc-800 text-xs"
+                      >
+                        {formatDate(note.created_at)}
+                      </Badge>
+                      {note.updated_at !== note.created_at && (
+                        <span className="text-xs text-zinc-500">
+                          (edited {formatDate(note.updated_at)})
+                        </span>
                       )}
-                    </Button>
-                  </div>
-                  <div className="prose prose-invert max-w-none text-sm text-white px-2">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {note.content}
-                    </ReactMarkdown>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => copyToClipboard(note.content, note.id)}
+                        className="text-zinc-400 hover:text-white hover:bg-zinc-800 p-1 h-6 w-6"
+                      >
+                        {copiedNoteId === note.id ? (
+                          <Check className="h-3 w-3" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => startEditing(note)}
+                        className="text-zinc-400 hover:text-white hover:bg-zinc-800 p-1 h-6 w-6"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => confirmDelete(note.id)}
+                        className="text-zinc-400 hover:text-red-400 hover:bg-zinc-800 p-1 h-6 w-6"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
 
-                  {summaries[note.id] && (
+                  {editingNoteId === note.id ? (
+                    <div className="space-y-2">
+                      <Textarea
+                        value={editedContent}
+                        onChange={(e) => setEditedContent(e.target.value)}
+                        className="w-full bg-zinc-950 border-zinc-800 text-zinc-200 placeholder:text-zinc-600 min-h-[80px] text-sm"
+                      />
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={cancelEditing}
+                          className="text-zinc-400 hover:text-white hover:bg-zinc-800 text-xs h-7"
+                        >
+                          <X className="h-3 w-3 mr-1" />
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={() =>
+                            updateNote.mutate({
+                              id: note.id,
+                              content: editedContent,
+                            })
+                          }
+                          disabled={!editedContent || updateNote.isPending}
+                          size="sm"
+                          className="bg-zinc-800 hover:bg-zinc-700 text-xs h-7"
+                        >
+                          {updateNote.isPending ? (
+                            <>
+                              <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                              Saving...
+                            </>
+                          ) : (
+                            <>
+                              <Save className="h-3 w-3 mr-1" />
+                              Save
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="prose prose-invert max-w-none text-sm text-white px-2">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {note.content}
+                      </ReactMarkdown>
+                    </div>
+                  )}
+
+                  {summaries[note.id] && !editingNoteId && (
                     <div className="mt-3 p-3 bg-zinc-950 rounded-md border border-zinc-800 text-xs">
                       <h4 className="font-medium text-zinc-400 mb-1">
                         Summary
@@ -255,7 +412,7 @@ export default function Dashboard() {
                     onClick={() => summarize(note.id, note.content)}
                     variant="ghost"
                     size="sm"
-                    disabled={summarizing[note.id]}
+                    disabled={summarizing[note.id] || editingNoteId === note.id}
                     className="text-zinc-400 hover:text-white hover:bg-zinc-800 text-xs h-7"
                   >
                     {summarizing[note.id] ? (
@@ -312,6 +469,36 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent className="bg-zinc-900 border-zinc-800 text-zinc-200">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">
+              Confirm deletion
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400">
+              Are you sure you want to delete this note? This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-zinc-800 border-zinc-700 text-zinc-300 hover:bg-zinc-700">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={executeDelete}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {deleteNote.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
